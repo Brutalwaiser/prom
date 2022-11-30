@@ -1,0 +1,57 @@
+#!/bin/bash
+cd /u01/jenkinsgpm/kafka-mon
+#cat /dev/null > result.txt
+FILE=cluster.conf
+while read LINE; do
+IFS=';' read -r -a STR <<< "$LINE"
+#echo -e "run"
+echo -e "Info from kafka cluster :  ${STR[0]}\n\n" >> result.txt
+echo -e "Consumer ${STR[1]}\n" >> result.txt
+#/u01/jenkinsgpm/kafka/bin/kafka-consumer-groups.sh --bootstrap-server dv-gpm-col2:9092,dv-gpm-col3:9092,dv-gpm-rcol2:9092 --describe --group mirror-maker-gpm-dv-msk | awk '!/0 {5}/ {print "|"$1"#|"$2"#|"$5"# |"}' |column -s "#" -t |awk 'BEGIN{line=""}{l=length($0);if(length(line)==0)for(i=1;i<l;i++)line=line"-";print line;print $0}END{print line}'
+/u01/jenkinsgpm/kafka/bin/kafka-consumer-groups.sh --bootstrap-server ${STR[0]} --describe --group ${STR[1]} | awk '!/0 {5}/ {print "|"$1"#   |"$2"#|"$5"# |"}' |column -s "#" -t |awk 'BEGIN{line=""}{l=length($0);if(length(line)==0)for(i=1;i<l;i++)line=line"-";print line;print $0}END{print line}' >> result.txt
+/u01/jenkinsgpm/kafka/bin/kafka-consumer-groups.sh --bootstrap-server ${STR[0]} --describe --group ${STR[1]} | awk '!/0 {5}/ {print $1";"$2";"$5";"}' |column -s "#" -t |awk 'BEGIN{line=""}{l=length($0);if(length(line)==0)for(i=1;i<l;i++)line=line"-";print line;print $0}END{print line}' >> data.txt
+echo -e "\nConsumer  ${STR[2]}\n" >> result.txt
+/u01/jenkinsgpm/kafka/bin/kafka-consumer-groups.sh --bootstrap-server ${STR[0]} --describe --group ${STR[2]} | awk '!/0 {5}/ {print "|"$1"#|"$2"#|"$5"# |"}' |column -s "#" -t |awk 'BEGIN{line=""}{l=length($0);if(length(line)==0)for(i=1;i<l;i++)line=line"-";print line;print $0}END{print line}' >> result.txt
+echo -e "\n=========================\n\n" >> result.txt
+done < $FILE
+MSG=`cat result.txt`
+MAIL_LIST="vladimir.fomin@megafon.ru"
+SUBJECT="GPM kafka latency monitoring"
+LINK="\n\nhttp://grafana.gpm02.megafon.ru/d/oE15RtbMz/kafka-monitoring?orgId=1"
+S="\n\n\n\nMessage from monitoring NRT"
+BODY="${MSG}${LINK}${S}"
+TO="To: alexander.filatov@megafon.ru;"
+#TO="To: vladimir.fomin@megafon.ru;"
+FROM="From: NRT-notify@megafon.ru;"
+SUB="Subject: GPM kafka latency monitoring;"
+CON="Content-Type: text/html;"
+MIME="MIME-Version: 1.0;"
+SPACE=";"
+MBODY="${TO}${FROM}${SUB}${CON}${MIME}${SPACE}${MSG}${LINK}"
+#echo "$BODY" | mailx  -r "NRT-notify@megafon.ru" -s "$SUBJECT" -S smtp=msk-smtp.megafon.ru:25 "$MAIL_LIST"
+cat result.txt > /u01/www/kafka/www/index.html
+#
+mailx -s "$(echo -e "Newsletter issue 3\nContent-Type: text/html")" -r "NRT-notify@megafon.ru" -s "$SUBJECT" "$MAIL_LIST" <  result.txt
+#sendmail -vt <mail.html
+#echo "$MBODY" | sendmail -t
+#outputFile="result.txt"  
+#attachFile="result.txt"
+#(
+#echo "From: NRT-notify@megafon.ru" 
+#echo "To: vladimir.fomin@megafon.ru"
+#echo "Subject: GPM kafka latency monitoring"
+#echo "Mime-Version: 1.0"
+#echo 'Content-Type: multipart/mixed; boundary="GvXjxJ+pjyke8COw"'
+##echo "Content-Disposition: inline" 
+#echo "" 
+#echo "--GvXjxJ+pjyke8COw" 
+#echo "Content-Type: text/html"
+#echo "Content-Disposition: inline"
+#cat $outputFile
+#echo "" 
+#echo "--GvXjxJ+pjyke8COw"
+#echo "Content-Type: text/plain"
+#echo "Content-Disposition: attachement; filename=attachment_filename.html"
+#echo "" 
+#cat $attachFile
+#) | /usr/lib/sendmail -t
